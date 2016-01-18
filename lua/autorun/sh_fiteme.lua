@@ -15,6 +15,7 @@ if(SERVER) then
 	util.AddNetworkString( "duelnotify" )
 	util.AddNetworkString( "duelsurrender" )
 	util.AddNetworkString( "dueldisconnect" )
+	util.AddNetworkString( "duelstatus" )
 	
 	
 	--Find player by name
@@ -206,6 +207,24 @@ if(SERVER) then
 		end
 	end )	
 	
+	net.Receive( "duelstatus", function( len, ply )
+		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
+		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
+		local curduel
+		if(check1 != nil || check2 != nil) then
+			if(check1 != nil) then
+				curduel = table.Copy(Duels[check1])
+			elseif (check2 != nil) then
+				curduel = table.Copy(Duels[check2])
+			end 
+			net.Start( "duelstatus" )
+			net.WriteTable(curtable)
+			net.Send(ply)
+		else
+			DuelChatNotify(ply, "You are not in a duel.")
+		end
+	end )	
+	
 	local function DuelDisconnect(ply)
 		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
 		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
@@ -296,6 +315,11 @@ if (CLIENT) then
 		net.SendToServer()
 	end )
 	
+	concommand.Add( "duel_status", function(ply, cmd, args, argstring)
+		net.Start( "duelstatus" )
+		net.SendToServer()
+	end )
+	
 	net.Receive( "duelchallenge", function( len, ply )
 		surface.PlaySound( "ambient/alarms/warningbell1.wav" )
 	end )
@@ -314,6 +338,11 @@ if (CLIENT) then
 	
 	net.Receive( "duelannounce", function( len, ply )
 		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), net.ReadEntity(), net.ReadString(), net.ReadEntity(), net.ReadString())
+	end )
+	
+	net.Receive( "duelstatus", function( len, ply )
+		local status = net.ReadTable()
+		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), status.p1, ": ", status.p1kills, ", ", status.p2, ": ", status.p2kills)
 	end )
 	
 	local function DuelChatCommands( ply, text, teamChat, isDead )
