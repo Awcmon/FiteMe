@@ -88,12 +88,10 @@ if(SERVER) then
 					--Go through and remove any challenges given out by both players
 					check = TablePosWithValForKey(DuelChallenges, targply, "p1")
 					for i = 1, table.Count(check) do
-						print("penis")
 						table.remove(DuelChallenges, i)
 					end
 					check = TablePosWithValForKey(DuelChallenges, ply, "p1")
 					for i = 1, table.Count(check) do
-						print("penis")
 						table.remove(DuelChallenges, i)
 					end
 					
@@ -124,6 +122,38 @@ if(SERVER) then
 			if(TableHasValForKey(Duels, ply, "p1") || TableHasValForKey(Duels, ply, "p2")) then
 				print(ply:Nick().." is eager to duel "..targply:Nick().." but is already in a duel!")
 				DuelChatNotify(ply, "You are already in a duel. Get lost.")
+				return
+			end
+			
+			--Auto-accept duel request if is bot. Sorry for the terrible code duplication. We do this check all the way down here so it goes through the "already-in-a-duel" check first. Fix later.
+			if(targply:IsBot()) then
+				print(ply:Nick().." has accepted "..targply:Nick().."'s challenge!")
+				DuelGlobalChatAnnounce(ply, " has accepted ", targply, "'s challenge!")
+					
+				table.remove(DuelChallenges, i)
+					
+				--Go through and remove any challenges given out by both players
+				check = TablePosWithValForKey(DuelChallenges, targply, "p1")
+				for i = 1, table.Count(check) do
+					table.remove(DuelChallenges, i)
+				end
+				check = TablePosWithValForKey(DuelChallenges, ply, "p1")
+				for i = 1, table.Count(check) do
+					table.remove(DuelChallenges, i)
+				end
+					
+				--Create the duel.
+				local DuelStruct = {}
+				DuelStruct.p1 = targply
+				DuelStruct.p2 = ply
+				DuelStruct.p1kills = 0
+				DuelStruct.p2kills = 0
+					
+				table.insert(Duels, DuelStruct)
+					
+				net.Start( "duelaccept" )
+				net.Send(player.GetAll())
+						
 				return
 			end
 			
@@ -175,10 +205,10 @@ if(SERVER) then
 			DuelChatNotify(ply, "Who are you even surrendering to?")
 		end
 	end )	
-	--[[
+	
 	local function DuelDisconnect(ply)
-		local check1 = TableHasValForKey(Duels, ply, "p1")
-		local check2 = TableHasValForKey(Duels, ply, "p2")
+		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
+		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
 		local otherply
 		--Remove from all tables.
 		if(check1 != nil || check2 != nil) then
@@ -195,17 +225,42 @@ if(SERVER) then
 		end
 		
 		--Clean all challenges given by and to them
-		local check = TableHasValForKey(DuelChallenges, ply, "p1")
-		while(check != nil) do
-			table.remove(DuelChallenges, check)
+		check = TablePosWithValForKey(DuelChallenges, ply, "p1")
+		for i = 1, table.Count(check) do
+			table.remove(DuelChallenges, i)
 		end
-		check = TableHasValForKey(DuelChallenges, ply, "p2")
-		while(check != nil) do
-			table.remove(DuelChallenges, check)
+		check = TablePosWithValForKey(DuelChallenges, ply, "p2")
+		for i = 1, table.Count(check) do
+			table.remove(DuelChallenges, i)
 		end
 	end
 	hook.Add("PlayerDisconnect", "DuelDisconnect", DuelDisconnect)
-]]--
+	
+	--Damage restriction
+	local function DuelShouldTakeDamage(ply, attacker)
+		--If the player is not dueling
+		if(!TableHasValForKey(Duels, ply, "p1") && !TableHasValForKey(Duels, ply, "p2")) then
+			--if the attacker is not in a duel then take damage
+			if(!TableHasValForKey(Duels, attacker, "p1") && !TableHasValForKey(Duels, attacker, "p2")) then
+				return true
+			else
+				DuelChatNotify(attacker, "You cannot hurt a player who is not in a duel with you.")
+				return false
+			end
+		end
+		--If the player and attacker are in a duel then take damage.
+		for k, v in pairs(Duels) do
+			if((ply == v.p1 && attacker == v.p2) || (ply == v.p2 && attacker == v.p1)) then
+				return true
+			end
+		end
+		--Otherwise, do no damage and tell the attacking player why he is not doing any damage.
+		if(attacker:IsPlayer()) then
+			DuelChatNotify(attacker, "You cannot hurt a player who is in a duel with somebody other than you.")
+		end
+		return false
+	end
+	hook.Add("PlayerShouldTakeDamage", "DuelShouldTakeDamage", DuelShouldTakeDamage)
 end
 
 if (CLIENT) then
