@@ -1,0 +1,9 @@
+"AddonInfo"
+{
+	"name"			"FiteMe"
+	"version"		"01/17/16"
+	"author_name"		"Awcmon and BFG"
+	"author_url"		""
+	"info"			"Dueling addon for Garry's Mod."
+	"override"		"0"
+}
