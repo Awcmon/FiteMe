@@ -3,10 +3,10 @@ AddCSLuaFile()
 
 if(SERVER) then
 
-	//Keep track of all the ongoing duels.
+	--Keep track of all the ongoing duels.
 	local Duels = {}
 	
-	//Keep track of all the outgoing duel requests.
+	--Keep track of all the outgoing duel requests.
 	local DuelChallenges = {}
 	
 	util.AddNetworkString( "duelchallenge" )
@@ -17,7 +17,7 @@ if(SERVER) then
 	util.AddNetworkString( "dueldisconnect" )
 	
 	
-	//Find player by name
+	--Find player by name
 	function pl(name) 
 		name = string.lower(name) 
 		for k, v in pairs(player.GetAll()) do 
@@ -51,13 +51,13 @@ if(SERVER) then
 		net.Send(ply)
 	end
 	
-	//Send/Accept duel challenges. Sorry for GIANT function.
+	--Send/Accept duel challenges. Sorry for GIANT function.
 	net.Receive( "duelchallenge", function( len, ply )
 		local args = net.ReadTable()
 		
 		local targply = pl(args[1])
 		if(IsValid(targply) && targply:IsPlayer()) then
-			//Check if there's already a duel challenge from target player for this player. If so, accept the challenge.
+			--Check if there's already a duel challenge from target player for this player. If so, accept the challenge.
 			local check = ScanTableKeysForVal(DuelChallenges, "p1", targply)
 			if(check != nil) then
 				if(DuelChallenges[check].p2 == ply) then
@@ -66,7 +66,7 @@ if(SERVER) then
 					
 					table.remove(DuelChallenges, check)
 					
-					//Go through and remove any challenges given out by both players
+					--Go through and remove any challenges given out by both players
 					check = ScanTableKeysForVal(DuelChallenges, "p1", targply)
 					while(check != nil) do
 						table.remove(DuelChallenges, check)
@@ -76,7 +76,7 @@ if(SERVER) then
 						table.remove(DuelChallenges, check)
 					end
 					
-					//Create the duel.
+					--Create the duel.
 					local DuelStruct = {}
 					DuelStruct.p1 = targply
 					DuelStruct.p2 = ply
@@ -92,21 +92,21 @@ if(SERVER) then
 				end
 			end
 			
-			//Else, send the challenge.
-			//Check if the player is challenging him/herself.
+			--Else, send the challenge.
+			--Check if the player is challenging him/herself.
 			if(ply == targply) then
 				print(ply:Nick().." tried to challenge themselves.")
 				DuelChatNotify(ply, "You can't duel yourself. Sorry, but that's the way the world works.")
 				return
 			end
-			//Do not let the player send or accept duel requests if already in a duel.
+			--Do not let the player send or accept duel requests if already in a duel.
 			if(ScanTableKeysForVal(Duels, "p1", ply) != nil || ScanTableKeysForVal(Duels, "p2", ply) != nil) then
 				print(ply:Nick().." is eager to duel "..targply:Nick().." but is already in a duel!")
 				DuelChatNotify(ply, "You are already in a duel. Get lost.")
 				return
 			end
 			
-			//First check if this player has already sent a request to the given targplayer. If so, stop.
+			--First check if this player has already sent a request to the given targplayer. If so, stop.
 			check = ScanTableKeysForVal(DuelChallenges, "p1", ply)
 			if(check != nil) then
 				if(DuelChallenges[check].p2 == targply) then
@@ -115,7 +115,7 @@ if(SERVER) then
 					return 
 				end
 			end
-			//Now, send the challenge.
+			--Now, send the challenge.
 			print(ply:Nick().." has challenged "..targply:Nick().." to a duel!")
 			DuelGlobalChatAnnounce(ply, " has challenged ", targply, " to a duel!")
 
@@ -133,7 +133,7 @@ if(SERVER) then
 		end
 	end )
 	
-	//Handle players surrendering.
+	--Handle players surrendering.
 	net.Receive( "duelsurrender", function( len, ply )
 		local check1 = ScanTableKeysForVal(Duels, "p1", ply)
 		local check2 = ScanTableKeysForVal(Duels, "p2", ply)
@@ -158,7 +158,7 @@ if(SERVER) then
 		local check1 = ScanTableKeysForVal(Duels, "p1", ply)
 		local check2 = ScanTableKeysForVal(Duels, "p2", ply)
 		local otherply
-		//Remove from all tables.
+		--Remove from all tables.
 		if(check1 != nil || check2 != nil) then
 			if(check1 != nil) then
 				otherply = Duels[check1].p2
@@ -172,7 +172,7 @@ if(SERVER) then
 			net.Send(player.GetAll())
 		end
 		
-		//Clean all challenges given by and to them
+		--Clean all challenges given by and to them
 		local check = ScanTableKeysForVal(DuelChallenges, "p1", ply)
 		while(check != nil) do
 			table.remove(DuelChallenges, check)
