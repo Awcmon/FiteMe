@@ -233,11 +233,34 @@ if (CLIENT) then
 	end )
 	
 	net.Receive( "duelnotify", function( len, ply )
-		chat.AddText(Color(46,204,113), "[Duel] ", Color(220,220,220), net.ReadString())
+		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), net.ReadString())
 	end )
 	
 	net.Receive( "duelannounce", function( len, ply )
-		chat.AddText(Color(46,204,113), "[Duel] ", Color(220,220,220), net.ReadEntity(), net.ReadString(), net.ReadEntity(), net.ReadString())
+		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), net.ReadEntity(), net.ReadString(), net.ReadEntity(), net.ReadString())
 	end )
+	
+	local function DuelChatCommands( ply, text, teamChat, isDead )
+		local expl = string.Explode(" ", text, false)
+		
+		//Duel
+		if ( expl[1] == "!duel" ) then
+			local args = table.Copy(expl)
+			table.remove(args, 1)
+			net.Start( "duelchallenge" )
+			net.WriteTable(args)
+			net.SendToServer()
+			return true
+		end
+		
+		//Surrender
+		if ( expl[1] == "!surrender" ) then
+			net.Start( "duelsurrender" )
+			net.SendToServer()
+			return true
+		end
+		
+	end
+	hook.Add( "OnPlayerChat", "DuelChatCommands", DuelChatCommands)
 	
 end
