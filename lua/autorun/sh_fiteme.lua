@@ -27,7 +27,26 @@ if(SERVER) then
 		end 
 	end 
 	
-	local function ScanTableKeysForVal(tbl, key, val)
+	local function TableHasValForKey(tbl, val, key)
+		for i = 1, table.Count(tbl) do
+			if(tbl[i][key] == val) then
+				return i
+			end
+		end
+		return nil
+	end
+	
+	local function TablePosWithValForKey(tbl, val, key)
+		local positions = {}
+		for i = 1, table.Count(tbl) do
+			if(tbl[i][key] == val) then
+				table.insert(positions, i)
+			end
+		end
+		return positions
+	end
+	
+	local function TableFirstPosWithValForKey(tbl, val, key)
 		for i = 1, table.Count(tbl) do
 			if(tbl[i][key] == val) then
 				return i
@@ -58,22 +77,24 @@ if(SERVER) then
 		local targply = pl(args[1])
 		if(IsValid(targply) && targply:IsPlayer()) then
 			--Check if there's already a duel challenge from target player for this player. If so, accept the challenge.
-			local check = ScanTableKeysForVal(DuelChallenges, "p1", targply)
-			if(check != nil) then
-				if(DuelChallenges[check].p2 == ply) then
+			local check = TablePosWithValForKey(DuelChallenges, targply, "p1")
+			for i = 1, table.Count(check) do
+				if(DuelChallenges[i].p2 == ply) then
 					print(ply:Nick().." has accepted "..targply:Nick().."'s challenge!")
 					DuelGlobalChatAnnounce(ply, " has accepted ", targply, "'s challenge!")
 					
-					table.remove(DuelChallenges, check)
+					table.remove(DuelChallenges, i)
 					
 					--Go through and remove any challenges given out by both players
-					check = ScanTableKeysForVal(DuelChallenges, "p1", targply)
-					while(check != nil) do
-						table.remove(DuelChallenges, check)
+					check = TablePosWithValForKey(DuelChallenges, targply, "p1")
+					for i = 1, table.Count(check) do
+						print("penis")
+						table.remove(DuelChallenges, i)
 					end
-					check = ScanTableKeysForVal(DuelChallenges, "p1", ply)
-					while(check != nil) do
-						table.remove(DuelChallenges, check)
+					check = TablePosWithValForKey(DuelChallenges, ply, "p1")
+					for i = 1, table.Count(check) do
+						print("penis")
+						table.remove(DuelChallenges, i)
 					end
 					
 					--Create the duel.
@@ -100,21 +121,22 @@ if(SERVER) then
 				return
 			end
 			--Do not let the player send or accept duel requests if already in a duel.
-			if(ScanTableKeysForVal(Duels, "p1", ply) != nil || ScanTableKeysForVal(Duels, "p2", ply) != nil) then
+			if(TableHasValForKey(Duels, ply, "p1") || TableHasValForKey(Duels, ply, "p2")) then
 				print(ply:Nick().." is eager to duel "..targply:Nick().." but is already in a duel!")
 				DuelChatNotify(ply, "You are already in a duel. Get lost.")
 				return
 			end
 			
 			--First check if this player has already sent a request to the given targplayer. If so, stop.
-			check = ScanTableKeysForVal(DuelChallenges, "p1", ply)
-			if(check != nil) then
-				if(DuelChallenges[check].p2 == targply) then
+			check = TablePosWithValForKey(DuelChallenges, ply, "p1")
+			for i = 1, table.Count(check) do
+				if(DuelChallenges[i].p2 == targply) then
 					print(ply:Nick().." has nagged "..targply:Nick().." to a duel!")
 					DuelChatNotify(ply, "You have already challenged that player to a duel. Quit nagging.")
 					return 
 				end
 			end
+			
 			--Now, send the challenge.
 			print(ply:Nick().." has challenged "..targply:Nick().." to a duel!")
 			DuelGlobalChatAnnounce(ply, " has challenged ", targply, " to a duel!")
@@ -135,8 +157,8 @@ if(SERVER) then
 	
 	--Handle players surrendering.
 	net.Receive( "duelsurrender", function( len, ply )
-		local check1 = ScanTableKeysForVal(Duels, "p1", ply)
-		local check2 = ScanTableKeysForVal(Duels, "p2", ply)
+		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
+		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
 		local otherply
 		if(check1 != nil || check2 != nil) then
 			if(check1 != nil) then
@@ -152,11 +174,11 @@ if(SERVER) then
 		else
 			DuelChatNotify(ply, "Who are you even surrendering to?")
 		end
-	end )
+	end )	
 	--[[
 	local function DuelDisconnect(ply)
-		local check1 = ScanTableKeysForVal(Duels, "p1", ply)
-		local check2 = ScanTableKeysForVal(Duels, "p2", ply)
+		local check1 = TableHasValForKey(Duels, ply, "p1")
+		local check2 = TableHasValForKey(Duels, ply, "p2")
 		local otherply
 		--Remove from all tables.
 		if(check1 != nil || check2 != nil) then
@@ -173,11 +195,11 @@ if(SERVER) then
 		end
 		
 		--Clean all challenges given by and to them
-		local check = ScanTableKeysForVal(DuelChallenges, "p1", ply)
+		local check = TableHasValForKey(DuelChallenges, ply, "p1")
 		while(check != nil) do
 			table.remove(DuelChallenges, check)
 		end
-		check = ScanTableKeysForVal(DuelChallenges, "p2", ply)
+		check = TableHasValForKey(DuelChallenges, ply, "p2")
 		while(check != nil) do
 			table.remove(DuelChallenges, check)
 		end
