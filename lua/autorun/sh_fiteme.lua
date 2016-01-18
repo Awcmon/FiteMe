@@ -243,7 +243,7 @@ if (CLIENT) then
 	local function DuelChatCommands( ply, text, teamChat, isDead )
 		local expl = string.Explode(" ", text, false)
 		
-		//Duel
+		--Duel
 		if ( expl[1] == "!duel" ) then
 			local args = table.Copy(expl)
 			table.remove(args, 1)
@@ -253,7 +253,7 @@ if (CLIENT) then
 			return true
 		end
 		
-		//Surrender
+		--Surrender
 		if ( expl[1] == "!surrender" ) then
 			net.Start( "duelsurrender" )
 			net.SendToServer()
