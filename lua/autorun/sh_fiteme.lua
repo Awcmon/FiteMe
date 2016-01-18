@@ -272,7 +272,7 @@ if(SERVER) then
 	
 	--Damage restriction
 	local function DuelShouldTakeDamage(ply, attacker)
-		//if the attacker is not a player or is the player, return true
+		--if the attacker is not a player or is the player, return true
 		if(!attacker:IsPlayer() || (ply == attacker)) then
 			return true
 		end
@@ -303,7 +303,7 @@ if(SERVER) then
 	function DuelDeath( victim, inflictor, attacker )
 		if(!TableHasValForKey(Duels, victim, "p1") && !TableHasValForKey(Duels, victim, "p2")) then return end
 		
-		//Check if the attacker is the other dueler. If so, increment attacker's kills.
+		--Check if the attacker is the other dueler. If so, increment attacker's kills.
 		local check = TableFirstPosWithValForKey(Duels, attacker, "p1")
 		if(check != nil) then
 			if(attacker == Duels[check].p1 && victim != attacker) then
@@ -322,7 +322,7 @@ if(SERVER) then
 				return
 			end
 		end
-		//Else, decrement score from victim.
+		--Else, decrement score from victim.
 		check = TableFirstPosWithValForKey(Duels, victim, "p1")
 		if(check != nil) then
 			Duels[check].p1kills = Duels[check].p1kills - 1
