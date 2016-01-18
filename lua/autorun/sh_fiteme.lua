@@ -238,6 +238,10 @@ if(SERVER) then
 	
 	--Damage restriction
 	local function DuelShouldTakeDamage(ply, attacker)
+		//if the attacker is not a player, return true
+		if(!attacker:IsPlayer()) then
+			return true
+		end
 		--If the player is not dueling
 		if(!TableHasValForKey(Duels, ply, "p1") && !TableHasValForKey(Duels, ply, "p2")) then
 			--if the attacker is not in a duel then take damage
@@ -261,6 +265,23 @@ if(SERVER) then
 		return false
 	end
 	hook.Add("PlayerShouldTakeDamage", "DuelShouldTakeDamage", DuelShouldTakeDamage)
+	
+	function DuelDeath( victim, inflictor, attacker )
+		if(!TableHasValForKey(Duels, victim, "p1") && !TableHasValForKey(Duels, victim, "p2")) then return end
+		
+		if ( victim == attacker ) then
+			local check = TableFirstPosWithValForKey(Duels, victim, "p1")
+			if(check != nil) then
+				Duels[check].p1kills = Duels[check].p1kills - 1
+			end
+			check = TableFirstPosWithValForKey(Duels, victim, "p2")
+			if(check != nil) then
+				Duels[check].p2kills = Duels[check].p2kills - 1
+			end
+		end
+		
+	end
+	hook.Add("PlayerDeath", "DuelDeath", DuelDeath)
 end
 
 if (CLIENT) then
@@ -296,6 +317,8 @@ if (CLIENT) then
 	end )
 	
 	local function DuelChatCommands( ply, text, teamChat, isDead )
+		if ply != LocalPlayer() then return end
+	
 		local expl = string.Explode(" ", text, false)
 		
 		--Duel
