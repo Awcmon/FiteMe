@@ -20,7 +20,7 @@ if(SERVER) then
 	
 	--Find player by name
 	function pl(name) 
-		name = string.lower(name) 
+		name = string.lower(name or "") 
 		for k, v in pairs(player.GetAll()) do 
 			if(string.find(string.lower(v:GetName()),name,1,true)and v:IsPlayer()) then 
 				return v 
@@ -69,6 +69,25 @@ if(SERVER) then
 		net.Start( "duelnotify" )
 		net.WriteString(str)
 		net.Send(ply)
+	end
+	
+	local function DuelUpdateStatus(ply)
+		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
+		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
+		local curduel
+		if(check1 != nil || check2 != nil) then
+			if(check1 != nil) then
+				curduel = table.Copy(Duels[check1])
+			elseif (check2 != nil) then
+				curduel = table.Copy(Duels[check2])
+			end 
+			net.Start( "duelstatus" )
+			net.WriteTable(curduel)
+			net.Send(ply)
+			return true
+		else
+			return false
+		end
 	end
 	
 	--Send/Accept duel challenges. Sorry for GIANT function.
@@ -123,6 +142,13 @@ if(SERVER) then
 			if(TableHasValForKey(Duels, ply, "p1") || TableHasValForKey(Duels, ply, "p2")) then
 				print(ply:Nick().." is eager to duel "..targply:Nick().." but is already in a duel!")
 				DuelChatNotify(ply, "You are already in a duel. Get lost.")
+				return
+			end
+			
+			--Do not let the player receive duel requests if already in a duel.
+			if(TableHasValForKey(Duels, targply, "p1") || TableHasValForKey(Duels, targply, "p2")) then
+				print(ply:Nick().." is eager to duel, but "..targply:Nick().." is already in a duel!")
+				DuelChatNotify(ply, "That player is already in a duel.")
 				return
 			end
 			
@@ -208,19 +234,8 @@ if(SERVER) then
 	end )	
 	
 	net.Receive( "duelstatus", function( len, ply )
-		local check1 = TableFirstPosWithValForKey(Duels, ply, "p1")
-		local check2 = TableFirstPosWithValForKey(Duels, ply, "p2")
-		local curduel
-		if(check1 != nil || check2 != nil) then
-			if(check1 != nil) then
-				curduel = table.Copy(Duels[check1])
-			elseif (check2 != nil) then
-				curduel = table.Copy(Duels[check2])
-			end 
-			net.Start( "duelstatus" )
-			net.WriteTable(curtable)
-			net.Send(ply)
-		else
+		if(!DuelUpdateStatus(ply)) then
+			print(ply:Nick().." requested a status update while not in a duel.")
 			DuelChatNotify(ply, "You are not in a duel.")
 		end
 	end )	
@@ -257,8 +272,8 @@ if(SERVER) then
 	
 	--Damage restriction
 	local function DuelShouldTakeDamage(ply, attacker)
-		//if the attacker is not a player, return true
-		if(!attacker:IsPlayer()) then
+		//if the attacker is not a player or is the player, return true
+		if(!attacker:IsPlayer() || (ply == attacker)) then
 			return true
 		end
 		--If the player is not dueling
@@ -288,15 +303,39 @@ if(SERVER) then
 	function DuelDeath( victim, inflictor, attacker )
 		if(!TableHasValForKey(Duels, victim, "p1") && !TableHasValForKey(Duels, victim, "p2")) then return end
 		
-		if ( victim == attacker ) then
-			local check = TableFirstPosWithValForKey(Duels, victim, "p1")
-			if(check != nil) then
-				Duels[check].p1kills = Duels[check].p1kills - 1
+		//Check if the attacker is the other dueler. If so, increment attacker's kills.
+		local check = TableFirstPosWithValForKey(Duels, attacker, "p1")
+		if(check != nil) then
+			if(attacker == Duels[check].p1 && victim != attacker) then
+				Duels[check].p1kills = Duels[check].p1kills + 1
+				DuelUpdateStatus(victim)
+				DuelUpdateStatus(attacker)
+				return
 			end
-			check = TableFirstPosWithValForKey(Duels, victim, "p2")
-			if(check != nil) then
-				Duels[check].p2kills = Duels[check].p2kills - 1
+		end
+		check = TableFirstPosWithValForKey(Duels, attacker, "p2")
+		if(check != nil) then
+			if(attacker == Duels[check].p2 && victim != attacker) then
+				Duels[check].p2kills = Duels[check].p2kills + 1
+				DuelUpdateStatus(victim)
+				DuelUpdateStatus(attacker)
+				return
 			end
+		end
+		//Else, decrement score from victim.
+		check = TableFirstPosWithValForKey(Duels, victim, "p1")
+		if(check != nil) then
+			Duels[check].p1kills = Duels[check].p1kills - 1
+			DuelUpdateStatus(victim)
+			DuelUpdateStatus(Duels[check].p2)
+			return
+		end
+		check = TableFirstPosWithValForKey(Duels, victim, "p2")
+		if(check != nil) then
+			Duels[check].p2kills = Duels[check].p2kills - 1
+			DuelUpdateStatus(victim)
+			DuelUpdateStatus(Duels[check].p1)
+			return
 		end
 		
 	end
@@ -304,6 +343,8 @@ if(SERVER) then
 end
 
 if (CLIENT) then
+	FiteMeDuelStatus = {}
+
 	concommand.Add( "duel_challenge", function(ply, cmd, args, argstring)
 		net.Start( "duelchallenge" )
 		net.WriteTable(args)
@@ -318,6 +359,8 @@ if (CLIENT) then
 	concommand.Add( "duel_status", function(ply, cmd, args, argstring)
 		net.Start( "duelstatus" )
 		net.SendToServer()
+		local status = FiteMeDuelStatus
+		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), status.p1, ": ", ""..status.p1kills, ", ", status.p2, ": ", ""..status.p2kills)
 	end )
 	
 	net.Receive( "duelchallenge", function( len, ply )
@@ -341,8 +384,9 @@ if (CLIENT) then
 	end )
 	
 	net.Receive( "duelstatus", function( len, ply )
-		local status = net.ReadTable()
-		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), status.p1, ": ", status.p1kills, ", ", status.p2, ": ", status.p2kills)
+		FiteMeDuelStatus = net.ReadTable()
+		local status = FiteMeDuelStatus
+		chat.AddText(Color(46,204,113), "[FiteMe] ", Color(220,220,220), status.p1, ": ", ""..status.p1kills, ", ", status.p2, ": ", ""..status.p2kills)
 	end )
 	
 	local function DuelChatCommands( ply, text, teamChat, isDead )
@@ -363,6 +407,12 @@ if (CLIENT) then
 		--Surrender
 		if ( expl[1] == "!surrender" ) then
 			net.Start( "duelsurrender" )
+			net.SendToServer()
+			return true
+		end
+		
+		if ( expl[1] == "!duelstatus" ) then
+			net.Start( "duelstatus" )
 			net.SendToServer()
 			return true
 		end
