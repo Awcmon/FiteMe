@@ -107,12 +107,12 @@ if(SERVER) then
 					
 					--Go through and remove any challenges given out by both players
 					check = TablePosWithValForKey(DuelChallenges, targply, "p1")
-					for i = 1, table.Count(check) do
-						table.remove(DuelChallenges, i)
+					for j = 1, table.Count(check) do
+						table.remove(DuelChallenges, j)
 					end
 					check = TablePosWithValForKey(DuelChallenges, ply, "p1")
-					for i = 1, table.Count(check) do
-						table.remove(DuelChallenges, i)
+					for j = 1, table.Count(check) do
+						table.remove(DuelChallenges, j)
 					end
 					
 					--Create the duel.
